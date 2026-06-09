@@ -1,0 +1,88 @@
+# ============================================================
+# Dockman .gitignore
+# ============================================================
+
+# --- Secrets & credentials (never commit) -------------------
+# Apple signing / notarization material
+*.p8
+*.p12
+*.pem
+*.key
+*.cer
+*.certSigningRequest
+*.mobileprovision
+*.provisionprofile
+*.keychain
+*.keychain-db
+AuthKey_*.p8
+
+# Environment files & generic secret stores
+.env
+.env.*
+*.env
+.envrc
+secrets/
+*.secret
+*credentials*.json
+*service-account*.json
+
+# --- Swift Package Manager -----------------------------------
+.build/
+.swiftpm/
+Package.resolved
+
+# --- Build artifacts / packaging -----------------------------
+build/
+dist/
+*.app
+*.dmg
+*.pkg
+*.zip
+*.xcarchive
+*.ipa
+*.dSYM
+*.dSYM.zip
+
+# --- Xcode ----------------------------------------------------
+DerivedData/
+xcuserdata/
+*.xcodeproj/project.xcworkspace/xcuserdata/
+*.xcuserstate
+*.xccheckout
+*.xcscmblueprint
+*.playground
+timeline.xctimeline
+playground.xcworkspace
+
+# --- Testing / coverage --------------------------------------
+*.xcresult
+.coverage/
+*.profraw
+*.profdata
+
+# --- macOS junk -----------------------------------------------
+.DS_Store
+.DS_Store?
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+Icon?
+
+# --- Editors / IDEs -------------------------------------------
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# --- AI assistant local config --------------------------------
+.claude/settings.local.json
+.claude/*.local.*
+CLAUDE.local.md
+
+# --- Logs & temp ----------------------------------------------
+*.log
+*.tmp
+tmp/
