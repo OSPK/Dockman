@@ -176,12 +176,13 @@ struct DockSettingsView: View {
                         get: { dock.behavior.showOverFullscreen }, set: { controller.setShowOverFullscreen(dockID, $0) }))
                 }
 
-                Section("Placement") {
-                    Text(placementSummary(dock)).foregroundStyle(.secondary)
-                    HStack {
-                        Button("Pin to Current Desktop") { controller.pinDockHere(dockID) }
-                        Button("Show on All Desktops") { controller.setDockAllSpaces(dockID) }
-                    }
+                Section {
+                    PlacementPicker(controller: controller, dockID: dockID)
+                } header: {
+                    Text("Monitors & Desktops")
+                } footer: {
+                    Text("Changes apply immediately. Hovering a monitor flashes its number on the real screen.")
+                        .font(.caption).foregroundStyle(.secondary)
                 }
 
                 Section {
@@ -190,15 +191,6 @@ struct DockSettingsView: View {
             }
             .formStyle(.grouped)
             .navigationTitle(dock.name)
-        }
-    }
-
-    private func placementSummary(_ dock: DockModel) -> String {
-        switch dock.binding.mode {
-        case .allSpaces: return "Shown on all desktops."
-        case .spaces:
-            if let id = dock.binding.spaces.first?.spaceID { return "Pinned to desktop (Space \(id))." }
-            return "Not pinned."
         }
     }
 
@@ -225,6 +217,63 @@ struct DockSettingsView: View {
         } else {
             finish(panel.runModal())
         }
+    }
+}
+
+/// The spatial monitor/desktop picker (docs/09), embedded in Settings. The same
+/// component the menu-bar popover uses, in `embedded` chrome: it commits each
+/// change immediately, and hovering a monitor flashes the identify overlay on
+/// the matching physical screen.
+private struct PlacementPicker: NSViewRepresentable {
+    @ObservedObject var controller: DockmanController
+    let dockID: UUID
+
+    final class Coordinator {
+        let identify = IdentifyOverlay()
+        /// Last binding we committed — used to tell our own updates apart from
+        /// external ones (menu-bar picker, orphan re-pin), so reconfiguring
+        /// doesn't fight the user mid-interaction.
+        var lastCommitted: ConfigKit.Binding?
+        deinit { identify.hideAll() }
+    }
+
+    func makeCoordinator() -> Coordinator { Coordinator() }
+
+    func makeNSView(context: Context) -> MonitorSpacePicker {
+        let picker = MonitorSpacePicker(frame: .zero)
+        picker.embedded = true
+        picker.onCommit = { binding in
+            context.coordinator.lastCommitted = binding
+            controller.setBinding(dockID, binding)
+        }
+        picker.onHoverMonitor = { uuid in
+            context.coordinator.identify.show(uuid: uuid, monitors: Monitors.current())
+        }
+        configure(picker, coordinator: context.coordinator)
+        return picker
+    }
+
+    func updateNSView(_ picker: MonitorSpacePicker, context: Context) {
+        guard let dock = controller.dock(dockID) else { return }
+        // Reconfigure only when the binding changed somewhere *else*.
+        if context.coordinator.lastCommitted != dock.binding {
+            configure(picker, coordinator: context.coordinator)
+        }
+    }
+
+    static func dismantleNSView(_ picker: MonitorSpacePicker, coordinator: Coordinator) {
+        coordinator.identify.hideAll()
+    }
+
+    private func configure(_ picker: MonitorSpacePicker, coordinator: Coordinator) {
+        guard let dock = controller.dock(dockID) else { return }
+        let topology = controller.monitor.topology
+        picker.configure(dockName: dock.name,
+                         topology: topology,
+                         monitors: Monitors.current(),
+                         currentBinding: dock.binding,
+                         activeSpaceID: topology.displays.first?.currentSpace?.id)
+        coordinator.lastCommitted = dock.binding
     }
 }
 

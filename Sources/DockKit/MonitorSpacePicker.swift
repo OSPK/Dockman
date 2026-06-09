@@ -10,6 +10,25 @@ public final class MonitorSpacePicker: NSView {
     public var onHoverMonitor: ((String?) -> Void)?
     public var onRequestClose: (() -> Void)?
 
+    /// Embedded mode (the Settings window hosts the picker inline): no title or
+    /// Done button, width follows the host instead of the fixed popover width,
+    /// and height is reported via `intrinsicContentSize`.
+    public var embedded = false
+
+    /// Total laid-out height after the last `rebuild()`.
+    public private(set) var contentHeight: CGFloat = 0
+    private var lastBuiltWidth: CGFloat = 0
+
+    public override var intrinsicContentSize: NSSize {
+        NSSize(width: NSView.noIntrinsicMetric, height: contentHeight)
+    }
+
+    public override func layout() {
+        super.layout()
+        // Embedded width is host-driven; re-flow when it actually changes.
+        if embedded, abs(bounds.width - lastBuiltWidth) > 1 { rebuild() }
+    }
+
     private var dockName = ""
     private var topology = SpacesTopology(displays: [], spansDisplays: false)
     private var monitors: [MonitorInfo] = []
@@ -76,11 +95,9 @@ public final class MonitorSpacePicker: NSView {
         rebuild()
     }
 
-    /// Computed popover size.
+    /// Computed popover size (uses the height measured by the last `rebuild()`).
     public func fittingSizeForPopover() -> NSSize {
-        let mapH: CGFloat = monitors.count > 1 ? 150 : 0
-        let height: CGFloat = 20 + 22 + 44 + 22 + 14 + mapH + (mapH > 0 ? 16 : 0) + 18 + 48 + 22 + 40 + 20
-        return NSSize(width: Self.width, height: height)
+        NSSize(width: Self.width, height: contentHeight)
     }
 
     // MARK: Build
@@ -124,16 +141,22 @@ public final class MonitorSpacePicker: NSView {
     // MARK: Layout + content refresh
 
     private func rebuild() {
-        let pad: CGFloat = 16
-        var y: CGFloat = 14
-        let w = Self.width - pad * 2
+        let pad: CGFloat = embedded ? 4 : 16
+        var y: CGFloat = embedded ? 4 : 14
+        let totalWidth = embedded ? max(bounds.width, 300) : Self.width
+        let w = totalWidth - pad * 2
+        lastBuiltWidth = bounds.width
 
-        titleLabel.stringValue = "Move “\(dockName)”"
-        titleLabel.frame = NSRect(x: pad, y: y, width: w, height: 20); y += 24
+        titleLabel.isHidden = embedded
+        if !embedded {
+            titleLabel.stringValue = "Move “\(dockName)”"
+            titleLabel.frame = NSRect(x: pad, y: y, width: w, height: 20); y += 24
+        }
 
         explainer.stringValue = dhssOff
             ? "Desktops span all monitors. Pick a desktop, then the monitors to show on."
             : "Each monitor has its own desktops. Pick a monitor, then its desktop."
+        explainer.preferredMaxLayoutWidth = w
         explainer.frame = NSRect(x: pad, y: y, width: w, height: 30); y += 34
 
         currentLabel.stringValue = currentBindingSummary()
@@ -161,14 +184,21 @@ public final class MonitorSpacePicker: NSView {
         allDesktopsCheck.frame = NSRect(x: pad, y: y, width: w, height: 20); y += 30
 
         pinHereButton.sizeToFit()
-        doneButton.sizeToFit()
-        let doneW: CGFloat = 80
         let pinW = max(pinHereButton.frame.width + 24, 170)
         pinHereButton.frame = NSRect(x: pad, y: y, width: pinW, height: 28)
-        doneButton.frame = NSRect(x: Self.width - pad - doneW, y: y, width: doneW, height: 28)
+        doneButton.isHidden = embedded
+        if !embedded {
+            doneButton.sizeToFit()
+            let doneW: CGFloat = 80
+            doneButton.frame = NSRect(x: totalWidth - pad - doneW, y: y, width: doneW, height: 28)
+        }
+        y += 28
 
         // Desktop selection is meaningless when "all desktops" is on.
         spaceStrip.subviews.forEach { ($0 as? NSButton)?.isEnabled = !allDesktops }
+
+        contentHeight = y + (embedded ? 6 : 20)
+        invalidateIntrinsicContentSize()
     }
 
     private func rebuildSpaceStrip() {

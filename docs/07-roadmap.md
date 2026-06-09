@@ -152,6 +152,9 @@ Originally scoped as:
 >   clipped. Works on all four edges (grows inward). Falloff curve unit-tested.
 > - **SwiftUI Settings window** — sidebar of docks + General pane; live-edits name,
 >   enable, style, position, icon size, tint, magnification, behavior, placement.
+>   The spatial monitor/desktop picker (docs/09) is embedded in each dock's pane
+>   (same component as the menu-bar popover, in `embedded` chrome with live
+>   identify-overlay flashes on hover), so placement is editable in both places.
 > - **User-managed separators, spacers & item order** — separators/spacers are real
 >   interactive cells (hover-highlighted, drag-to-reorder, right-click ▸ Remove);
 >   icons gain "Add Separator/Spacer After" in their context menu; Settings gains a
