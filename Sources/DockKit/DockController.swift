@@ -54,6 +54,7 @@ public final class DockController {
                            running: running, vertical: model.appearance.edge.isVertical, maxLength: maxLen,
                            style: model.appearance.style, tintHex: model.appearance.tintHex,
                            edge: model.appearance.edge, magnify: model.appearance.magnification,
+                           magnifyScale: CGFloat(model.appearance.magnificationScale),
                            padding: CGFloat(model.appearance.padding))
         }
         resizeWindowsToFit()
@@ -103,6 +104,7 @@ public final class DockController {
                            maxLength: maxLength(forScreenFrame: screen.frame),
                            style: model.appearance.style, tintHex: model.appearance.tintHex,
                            edge: model.appearance.edge, magnify: model.appearance.magnification,
+                           magnifyScale: CGFloat(model.appearance.magnificationScale),
                            padding: CGFloat(model.appearance.padding))
             panel.hasShadow = model.appearance.style != .minimal
             let size = view.fittingSize()

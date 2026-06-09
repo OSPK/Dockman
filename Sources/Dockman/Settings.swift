@@ -78,6 +78,24 @@ struct DockSettingsView: View {
                         get: { dock.enabled }, set: { controller.setEnabled(dockID, $0) }))
                 }
 
+                Section("Behavior") {
+                    Toggle("Auto-hide", isOn: Binding(
+                        get: { dock.behavior.autoHide }, set: { controller.setAutoHide(dockID, $0) }))
+                    Toggle("Summon windows to this screen", isOn: Binding(
+                        get: { dock.behavior.summonWindows }, set: { controller.setSummonWindows(dockID, $0) }))
+                    Toggle("Show over fullscreen apps", isOn: Binding(
+                        get: { dock.behavior.showOverFullscreen }, set: { controller.setShowOverFullscreen(dockID, $0) }))
+                }
+
+                Section {
+                    PlacementPicker(controller: controller, dockID: dockID)
+                } header: {
+                    Text("Monitors & Desktops")
+                } footer: {
+                    Text("Changes apply immediately. Hovering a monitor flashes its number on the real screen.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+
                 Section("Appearance") {
                     Picker("Style", selection: Binding(
                         get: { dock.appearance.style }, set: { controller.setStyle(dockID, $0) })) {
@@ -104,6 +122,17 @@ struct DockSettingsView: View {
                     Toggle("Magnification", isOn: Binding(
                         get: { dock.appearance.magnification },
                         set: { controller.setMagnification(dockID, $0) }))
+
+                    if dock.appearance.magnification {
+                        VStack(alignment: .leading) {
+                            LabeledContent("Magnification Size",
+                                           value: String(format: "%.1f×", dock.appearance.magnificationScale))
+                            Slider(value: Binding(
+                                get: { dock.appearance.magnificationScale },
+                                set: { controller.setMagnificationScale(dockID, $0) }), in: 1.1...2.2, step: 0.1)
+                        }
+                        .help("How large icons grow under the cursor")
+                    }
 
                     VStack(alignment: .leading) {
                         LabeledContent("Margin", value: "\(Int(dock.appearance.padding)) px")
@@ -164,24 +193,6 @@ struct DockSettingsView: View {
                     Text("Items")
                 } footer: {
                     Text("Drag to reorder. You can also drag icons directly on the dock, drop files from Finder onto it, and right-click items there to add or remove separators.")
-                        .font(.caption).foregroundStyle(.secondary)
-                }
-
-                Section("Behavior") {
-                    Toggle("Auto-hide", isOn: Binding(
-                        get: { dock.behavior.autoHide }, set: { controller.setAutoHide(dockID, $0) }))
-                    Toggle("Summon windows to this screen", isOn: Binding(
-                        get: { dock.behavior.summonWindows }, set: { controller.setSummonWindows(dockID, $0) }))
-                    Toggle("Show over fullscreen apps", isOn: Binding(
-                        get: { dock.behavior.showOverFullscreen }, set: { controller.setShowOverFullscreen(dockID, $0) }))
-                }
-
-                Section {
-                    PlacementPicker(controller: controller, dockID: dockID)
-                } header: {
-                    Text("Monitors & Desktops")
-                } footer: {
-                    Text("Changes apply immediately. Hovering a monitor flashes its number on the real screen.")
                         .font(.caption).foregroundStyle(.secondary)
                 }
 

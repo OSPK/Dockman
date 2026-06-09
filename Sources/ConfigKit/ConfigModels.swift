@@ -66,6 +66,8 @@ public struct Appearance: Codable, Equatable, Sendable {
     /// When true, icons grow with cursor distance (classic Dock magnification),
     /// popping above the bar. Off by default.
     public var magnification: Bool
+    /// Peak zoom factor under the cursor when magnification is on (1.0 = no growth).
+    public var magnificationScale: Double
     /// Inner margin between the icons and the bar's slab edge, in points.
     public var padding: Double
     /// Gap between the bar and its screen edge, in points (0 = flush).
@@ -73,9 +75,11 @@ public struct Appearance: Codable, Equatable, Sendable {
 
     public static let defaultPadding: Double = 10
     public static let defaultEdgeGap: Double = 16
+    public static let defaultMagnificationScale: Double = 1.6
 
     public init(edge: Edge = .bottom, iconSize: Double = 52, style: Style = .classic,
                 tintHex: String? = nil, magnification: Bool = false,
+                magnificationScale: Double = Appearance.defaultMagnificationScale,
                 padding: Double = Appearance.defaultPadding,
                 edgeGap: Double = Appearance.defaultEdgeGap) {
         self.edge = edge
@@ -83,12 +87,13 @@ public struct Appearance: Codable, Equatable, Sendable {
         self.style = style
         self.tintHex = tintHex
         self.magnification = magnification
+        self.magnificationScale = magnificationScale
         self.padding = padding
         self.edgeGap = edgeGap
     }
 
     private enum CodingKeys: String, CodingKey {
-        case edge, iconSize, style, tintHex, magnification, padding, edgeGap
+        case edge, iconSize, style, tintHex, magnification, magnificationScale, padding, edgeGap
     }
 
     // Tolerant decode so configs written before newer fields existed keep the rest.
@@ -99,6 +104,8 @@ public struct Appearance: Codable, Equatable, Sendable {
         style = try c.decodeIfPresent(Style.self, forKey: .style) ?? .classic
         tintHex = try c.decodeIfPresent(String.self, forKey: .tintHex)
         magnification = try c.decodeIfPresent(Bool.self, forKey: .magnification) ?? false
+        magnificationScale = try c.decodeIfPresent(Double.self, forKey: .magnificationScale)
+            ?? Appearance.defaultMagnificationScale
         padding = try c.decodeIfPresent(Double.self, forKey: .padding) ?? Appearance.defaultPadding
         edgeGap = try c.decodeIfPresent(Double.self, forKey: .edgeGap) ?? Appearance.defaultEdgeGap
     }

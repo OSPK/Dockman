@@ -51,4 +51,17 @@ final class MagnifierTests: XCTestCase {
         XCTAssertEqual(h, 52 * (Magnifier.maxScale - 1), accuracy: 0.0001)
         XCTAssertGreaterThan(h, 0)
     }
+
+    func testCustomMaxScaleDrivesPeakAndHeadroom() {
+        XCTAssertEqual(Magnifier.scale(distance: 0, stride: stride, maxScale: 2.0), 2.0, accuracy: 0.0001)
+        XCTAssertEqual(Magnifier.headroom(iconSize: 50, enabled: true, maxScale: 2.0), 50, accuracy: 0.0001)
+        // A larger peak magnifies a neighbour more, same falloff shape.
+        XCTAssertGreaterThan(Magnifier.scale(distance: 40, stride: stride, maxScale: 2.0),
+                             Magnifier.scale(distance: 40, stride: stride, maxScale: 1.3))
+    }
+
+    func testMaxScaleAtOrBelowOneDisablesGrowth() {
+        XCTAssertEqual(Magnifier.scale(distance: 0, stride: stride, maxScale: 1.0), 1)
+        XCTAssertEqual(Magnifier.headroom(iconSize: 52, enabled: true, maxScale: 1.0), 0)
+    }
 }

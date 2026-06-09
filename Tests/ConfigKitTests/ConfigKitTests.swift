@@ -106,6 +106,16 @@ final class ConfigKitTests: XCTestCase {
         XCTAssertEqual(reloaded.edgeGap, 0)
     }
 
+    func testMagnificationScaleDefaultsWhenAbsentAndRoundTrips() throws {
+        let legacy = #"{ "edge": "bottom", "magnification": true }"#
+        let decoded = try JSONDecoder().decode(Appearance.self, from: Data(legacy.utf8))
+        XCTAssertEqual(decoded.magnificationScale, Appearance.defaultMagnificationScale)
+
+        let custom = Appearance(magnification: true, magnificationScale: 2.0)
+        let reloaded = try JSONDecoder().decode(Appearance.self, from: JSONEncoder().encode(custom))
+        XCTAssertEqual(reloaded.magnificationScale, 2.0)
+    }
+
     // Dev helper: writes a Dock exercising every item kind to the real config path.
     // Runs only when DOCKMAN_DEMO=1 so normal test passes are unaffected.
     func testWriteRichDemoConfig() throws {

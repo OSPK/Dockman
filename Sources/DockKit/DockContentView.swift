@@ -24,6 +24,7 @@ public final class DockContentView: NSView {
     private var vertical = false
     private var edge: Appearance.Edge = .bottom
     private var magnify = false
+    private var magnifyScale: CGFloat = CGFloat(Appearance.defaultMagnificationScale)
     private var folderPopover: NSPopover?
     private var magnifyTracking: NSTrackingArea?
     /// Bar-region pins for `contentHolder`, rebuilt when edge/headroom change.
@@ -35,6 +36,7 @@ public final class DockContentView: NSView {
     private var appliedReduceTransparency = false
     private var appliedEdge: Appearance.Edge?
     private var appliedMagnify: Bool?
+    private var appliedMagnifyScale: CGFloat?
 
     public override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
@@ -146,6 +148,7 @@ public final class DockContentView: NSView {
         appliedReduceTransparency = reduce
         appliedEdge = edge
         appliedMagnify = magnify
+        appliedMagnifyScale = magnifyScale
     }
 
     private func makeVisualEffect(radius: CGFloat) -> NSVisualEffectView {
@@ -163,18 +166,20 @@ public final class DockContentView: NSView {
                           vertical: Bool = false, maxLength: CGFloat = .greatestFiniteMagnitude,
                           style: Appearance.Style = .classic, tintHex: String? = nil,
                           edge: Appearance.Edge = .bottom, magnify: Bool = false,
+                          magnifyScale: CGFloat = CGFloat(Appearance.defaultMagnificationScale),
                           padding: CGFloat = CGFloat(Appearance.defaultPadding)) {
         self.items = items
         self.iconSize = iconSize
         self.vertical = vertical
         self.edge = edge
         self.magnify = magnify
+        self.magnifyScale = magnifyScale
         self.padding = padding
 
         let reduce = NSWorkspace.shared.accessibilityDisplayShouldReduceTransparency
-        let headroom = Magnifier.headroom(iconSize: iconSize, enabled: magnify)
+        let headroom = Magnifier.headroom(iconSize: iconSize, enabled: magnify, maxScale: magnifyScale)
         if style != appliedStyle || tintHex != appliedTint || reduce != appliedReduceTransparency
-            || edge != appliedEdge || magnify != appliedMagnify {
+            || edge != appliedEdge || magnify != appliedMagnify || magnifyScale != appliedMagnifyScale {
             applyStyle(style, tintHex: tintHex, headroom: headroom)
         }
         updateTrackingAreas()   // install/tear down the cursor-move area as magnify toggles
@@ -188,7 +193,7 @@ public final class DockContentView: NSView {
 
         // Budget so the Dock never grows past its display (docs/05 R-7). Pinned items
         // always show; the dynamic running-apps zone fills whatever room is left.
-        let budget = maxLength.isFinite ? maxLength - padding * 2 : .greatestFiniteMagnitude
+        let budget = maxLength.isFinite ? maxLength - lengthPad * 2 : .greatestFiniteMagnitude
         let separatorLen = DockGapCell.separatorLength
         // A cell is iconSize wide but iconSize+10 tall (the running-indicator dot), so
         // its length along the stack axis differs between orientations.
@@ -228,14 +233,23 @@ public final class DockContentView: NSView {
         }
     }
 
+    /// Margin at the bar's two ends (along its length). Slightly larger than the
+    /// cross-axis margin so the first/last icons don't look cramped against the
+    /// rounded corners.
+    private var lengthPad: CGFloat { padding + 2 }
+
     public func fittingSize() -> NSSize {
         stack.layoutSubtreeIfNeeded()
         let inner = stack.fittingSize
-        let minSide = iconSize + padding * 2
-        var size = NSSize(width: max(inner.width + padding * 2, minSide),
-                          height: max(inner.height + padding * 2, minSide))
+        let lengthMin = iconSize + lengthPad * 2
+        let crossMin = iconSize + padding * 2
+        var size = vertical
+            ? NSSize(width: max(inner.width + padding * 2, crossMin),
+                     height: max(inner.height + lengthPad * 2, lengthMin))
+            : NSSize(width: max(inner.width + lengthPad * 2, lengthMin),
+                     height: max(inner.height + padding * 2, crossMin))
         // Reserve room on the cross axis so the peak magnified icon clears the bar.
-        let headroom = Magnifier.headroom(iconSize: iconSize, enabled: magnify)
+        let headroom = Magnifier.headroom(iconSize: iconSize, enabled: magnify, maxScale: magnifyScale)
         if vertical { size.width += headroom } else { size.height += headroom }
         return size
     }
@@ -272,7 +286,8 @@ public final class DockContentView: NSView {
         for case let cell as DockItemCell in stack.arrangedSubviews {
             let f = cell.convert(cell.bounds, to: self)
             let center = vertical ? f.midY : f.midX
-            cell.setMagnification(Magnifier.scale(distance: cursor - center, stride: stride))
+            cell.setMagnification(Magnifier.scale(distance: cursor - center, stride: stride,
+                                                  maxScale: magnifyScale))
         }
     }
 

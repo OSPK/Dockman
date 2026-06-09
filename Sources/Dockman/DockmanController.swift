@@ -170,6 +170,7 @@ final class DockmanController: ObservableObject {
     func setStyle(_ id: UUID, _ style: Appearance.Style) { mutate(id) { $0.appearance.style = style } }
     func setTint(_ id: UUID, _ hex: String?) { mutate(id) { $0.appearance.tintHex = hex } }
     func setMagnification(_ id: UUID, _ on: Bool) { mutate(id) { $0.appearance.magnification = on } }
+    func setMagnificationScale(_ id: UUID, _ scale: Double) { mutate(id) { $0.appearance.magnificationScale = scale } }
     func setPadding(_ id: UUID, _ points: Double) { mutate(id) { $0.appearance.padding = points } }
     func setEdgeGap(_ id: UUID, _ points: Double) { mutate(id) { $0.appearance.edgeGap = points } }
 
