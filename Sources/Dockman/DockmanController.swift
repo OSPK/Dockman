@@ -173,6 +173,18 @@ final class DockmanController: ObservableObject {
     func setPadding(_ id: UUID, _ points: Double) { mutate(id) { $0.appearance.padding = points } }
     func setEdgeGap(_ id: UUID, _ points: Double) { mutate(id) { $0.appearance.edgeGap = points } }
 
+    // Item management (Settings "Items" editor + dock context menus).
+    func moveItems(_ id: UUID, from: IndexSet, to: Int) { mutate(id) { $0.items.move(fromOffsets: from, toOffset: to) } }
+    func removeItems(_ id: UUID, at offsets: IndexSet) { mutate(id) { $0.items.remove(atOffsets: offsets) } }
+    func appendItem(_ id: UUID, _ item: ConfigKit.DockItem) {
+        mutate(id) {
+            // At most one running-apps zone per dock — a second would render every
+            // running app twice.
+            if item == .runningAppsZone, $0.items.contains(.runningAppsZone) { return }
+            $0.items.append(item)
+        }
+    }
+
     func pinDockHere(_ id: UUID) {
         guard let ref = currentSpaceRef() else { return }
         mutate(id) { $0.binding = Binding(mode: .spaces, spaces: [ref]) }

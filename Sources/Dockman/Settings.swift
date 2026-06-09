@@ -135,6 +135,38 @@ struct DockSettingsView: View {
                     }
                 }
 
+                Section {
+                    List {
+                        ForEach(Array(dock.items.enumerated()), id: \.offset) { index, item in
+                            ItemRow(item: item) {
+                                controller.removeItems(dockID, at: IndexSet(integer: index))
+                            }
+                        }
+                        .onMove { from, to in controller.moveItems(dockID, from: from, to: to) }
+                    }
+                    .frame(minHeight: 120, idealHeight: CGFloat(dock.items.count) * 28 + 16, maxHeight: 240)
+                    HStack {
+                        Menu {
+                            Button("App, File, or Folder…") { browseAndAddItems() }
+                            Divider()
+                            Button("Separator") { controller.appendItem(dockID, .separator) }
+                            Button("Spacer") { controller.appendItem(dockID, .spacer(points: 24)) }
+                            Divider()
+                            Button("Running Apps") { controller.appendItem(dockID, .runningAppsZone) }
+                                .disabled(dock.items.contains(.runningAppsZone))
+                        } label: {
+                            Label("Add Item", systemImage: "plus")
+                        }
+                        .fixedSize()
+                        Spacer()
+                    }
+                } header: {
+                    Text("Items")
+                } footer: {
+                    Text("Drag to reorder. You can also drag icons directly on the dock, drop files from Finder onto it, and right-click items there to add or remove separators.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+
                 Section("Behavior") {
                     Toggle("Auto-hide", isOn: Binding(
                         get: { dock.behavior.autoHide }, set: { controller.setAutoHide(dockID, $0) }))
@@ -167,6 +199,83 @@ struct DockSettingsView: View {
         case .spaces:
             if let id = dock.binding.spaces.first?.spaceID { return "Pinned to desktop (Space \(id))." }
             return "Not pinned."
+        }
+    }
+
+    /// Open-panel flow for "Add Item ▸ App, File, or Folder…". Apps become app
+    /// items, other folders become folder stacks, files become file items —
+    /// the same classification as dropping from Finder.
+    private func browseAndAddItems() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = true
+        panel.directoryURL = URL(fileURLWithPath: "/Applications")
+        panel.message = "Choose apps, files, or folders to add to this dock."
+        panel.prompt = "Add to Dock"
+        // treatsFilePackagesAsDirectories stays false so .app bundles select whole.
+        let finish: (NSApplication.ModalResponse) -> Void = { response in
+            guard response == .OK else { return }
+            for url in panel.urls {
+                controller.appendItem(dockID, DockItemOps.item(forDroppedPath: url.path))
+            }
+        }
+        if let window = NSApp.keyWindow {
+            panel.beginSheetModal(for: window, completionHandler: finish)
+        } else {
+            finish(panel.runModal())
+        }
+    }
+}
+
+/// One row in the per-dock Items editor: icon, name, and a remove button.
+private struct ItemRow: View {
+    let item: DockItem
+    let onRemove: () -> Void
+
+    var body: some View {
+        HStack(spacing: 8) {
+            icon.frame(width: 20, height: 20)
+            Text(label)
+            Spacer()
+            Button(action: onRemove) {
+                Image(systemName: "minus.circle.fill").foregroundStyle(.secondary)
+            }
+            .buttonStyle(.plain)
+            .help("Remove from dock")
+        }
+        .contentShape(Rectangle())
+    }
+
+    @ViewBuilder private var icon: some View {
+        switch item {
+        case .app(let path, _), .file(let path, _), .folder(let path, _, _):
+            Image(nsImage: NSWorkspace.shared.icon(forFile: path)).resizable()
+        case .separator:
+            Image(systemName: "poweron").foregroundStyle(.secondary)
+        case .spacer:
+            Image(systemName: "arrow.left.and.right").foregroundStyle(.secondary)
+        case .action(let action):
+            Image(systemName: action.symbol ?? "bolt.circle.fill")
+        case .runningAppsZone:
+            Image(systemName: "circle.dashed").foregroundStyle(.secondary)
+        }
+    }
+
+    private var label: String {
+        switch item {
+        case .app(let path, let label), .file(let path, let label):
+            return label ?? (path as NSString).lastPathComponent.replacingOccurrences(of: ".app", with: "")
+        case .folder(let path, let label, _):
+            return label ?? (path as NSString).lastPathComponent
+        case .separator:
+            return "Separator"
+        case .spacer(let points):
+            return "Spacer (\(Int(points)) pt)"
+        case .action(let action):
+            return action.label ?? action.value
+        case .runningAppsZone:
+            return "Running Apps"
         }
     }
 }

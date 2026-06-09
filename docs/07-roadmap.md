@@ -152,6 +152,12 @@ Originally scoped as:
 >   clipped. Works on all four edges (grows inward). Falloff curve unit-tested.
 > - **SwiftUI Settings window** — sidebar of docks + General pane; live-edits name,
 >   enable, style, position, icon size, tint, magnification, behavior, placement.
+> - **User-managed separators, spacers & item order** — separators/spacers are real
+>   interactive cells (hover-highlighted, drag-to-reorder, right-click ▸ Remove);
+>   icons gain "Add Separator/Spacer After" in their context menu; Settings gains a
+>   per-dock **Items** editor (drag-reorder list + remove + add buttons). Drop
+>   insertion indexing fixed to count gap items and to use the y-axis on vertical
+>   docks (pure logic unit-tested). All edits persist via the atomic config store.
 > - **Hide the system Dock** — `SystemDock` helper with safe restore when turned off.
 > - **Reduce Transparency** — translucent styles auto-substitute a Solid slab; live
 >   re-render on the accessibility-options-changed notification.
