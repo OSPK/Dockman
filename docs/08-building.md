@@ -1,6 +1,6 @@
-# 08 — Building, Testing & Deploying (this machine)
+# 08 — Building, Testing & Deploying
 
-Concrete, copy-pasteable instructions verified against the development machine:
+Concrete, copy-pasteable instructions, verified against this reference configuration:
 **macOS 26.5.1 (Tahoe) · Apple Silicon (arm64) · Xcode 26.1 · Swift 6.2.1**.
 
 The project is a Swift package. Phase 0 (the feasibility spike) is built and run with
@@ -27,7 +27,7 @@ Run it from Terminal/this session while logged into the desktop, not over a head
 ## 1. Build
 
 ```bash
-cd /Users/waqas/web/dockman
+cd Dockman   # the cloned repo root
 
 swift build                 # debug
 swift build -c release      # optimized
