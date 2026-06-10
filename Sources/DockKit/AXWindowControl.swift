@@ -23,24 +23,44 @@ public enum AXWindowControl {
     /// makes a fresh window — then move that window over.
     public static func summon(appPath: String, toScreen screen: NSScreen,
                               retries: Int = 40, interval: TimeInterval = 0.15) {
-        guard isTrusted else { requestTrust(); return }
+        // Missing Accessibility must degrade, not swallow the click: open/activate
+        // works without any permission — only the move-to-screen part needs AX.
+        let trusted = isTrusted
+        if !trusted { requestTrust() }
 
         if let app = NSWorkspace.shared.runningApplications.first(where: { $0.bundleURL?.path == appPath }) {
             if app.isHidden { app.unhide() }
             app.activate()
-            let appElement = AXUIElementCreateApplication(app.processIdentifier)
-            if let window = mainWindow(of: appElement) {
-                _ = move(window: window, toScreen: screen)
+            if trusted {
+                let appElement = AXUIElementCreateApplication(app.processIdentifier)
+                if let window = mainWindow(of: appElement) {
+                    _ = move(window: window, toScreen: screen)
+                    return
+                }
+            }
+            // Running but window-less (or untrusted, where we can't see windows):
+            // bare activation shows nothing. Fall through to openApplication, which
+            // sends the reopen event that creates/restores a window.
+
+            // Finder is special: it's always running and its only AX window may be
+            // the desktop, and being "already open" it doesn't reliably make a new
+            // window on reopen. Opening a folder always does (no permission needed).
+            if appPath.hasSuffix("/Finder.app") {
+                NSWorkspace.shared.open(FileManager.default.homeDirectoryForCurrentUser)
+                if trusted {
+                    DispatchQueue.main.async {
+                        waitForWindowAndMove(pid: app.processIdentifier, screen: screen,
+                                             retries: retries, interval: interval)
+                    }
+                }
                 return
             }
-            // Running but window-less: bare activation shows nothing. Fall through to
-            // openApplication, which sends the reopen event that creates a window.
         }
         let configuration = NSWorkspace.OpenConfiguration()
         configuration.activates = true
         NSWorkspace.shared.openApplication(at: URL(fileURLWithPath: appPath),
                                            configuration: configuration) { app, _ in
-            guard let app else { return }
+            guard trusted, let app else { return }
             DispatchQueue.main.async {
                 waitForWindowAndMove(pid: app.processIdentifier, screen: screen,
                                      retries: retries, interval: interval)
@@ -72,18 +92,34 @@ public enum AXWindowControl {
 
     // MARK: - AX plumbing
 
+    /// Subroles that count as a summonable window. Filters out pseudo-windows —
+    /// most importantly Finder's desktop, which is always present and would
+    /// otherwise satisfy "the app has a window" even when none are open.
+    private static let movableSubroles: Set<String> = [
+        kAXStandardWindowSubrole as String,
+        kAXDialogSubrole as String,
+    ]
+
+    private static func isMovableWindow(_ window: AXUIElement) -> Bool {
+        var value: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(window, kAXSubroleAttribute as CFString, &value) == .success,
+              let subrole = value as? String else { return true }   // no subrole info → assume real
+        return movableSubroles.contains(subrole)
+    }
+
     private static func mainWindow(of appElement: AXUIElement) -> AXUIElement? {
         for attribute in [kAXMainWindowAttribute, kAXFocusedWindowAttribute] {
             var value: CFTypeRef?
             if AXUIElementCopyAttributeValue(appElement, attribute as CFString, &value) == .success,
                let v = value, CFGetTypeID(v) == AXUIElementGetTypeID() {
-                return (v as! AXUIElement)
+                let window = (v as! AXUIElement)
+                if isMovableWindow(window) { return window }
             }
         }
         var windowsValue: CFTypeRef?
         guard AXUIElementCopyAttributeValue(appElement, kAXWindowsAttribute as CFString, &windowsValue) == .success,
-              let windows = windowsValue as? [AXUIElement], let first = windows.first else { return nil }
-        return first
+              let windows = windowsValue as? [AXUIElement] else { return nil }
+        return windows.first(where: isMovableWindow)
     }
 
     private static func windowSize(_ window: AXUIElement) -> CGSize? {
